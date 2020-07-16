@@ -37,14 +37,27 @@ static DEFAULT_WIDTH: u32 = 800u32;
 static DEFAULT_HEIGHT: u32 = 600u32;
 
 pub trait UiContext: 'static {
+    fn new(width: f64, height: f64) -> Self;
     fn handle_event(&mut self, event: &WindowEvent, size: Vector2<u32>, hidpi: f64) -> bool;
     fn render(&mut self, width: f32, height: f32, hidpi_factor: f32);
+}
+
+pub struct NullUiContext;
+
+impl UiContext for NullUiContext {
+    fn new(_width: f64, _height: f64) -> Self {
+        Self
+    }
+    fn handle_event(&mut self, _event: &WindowEvent, _size: Vector2<u32>, hidpi: f64) -> bool {
+        false
+    }
+    fn render(&mut self, _width: f32, _height: f32, _hidpi_factor: f32) {}
 }
 
 /// Structure representing a window and a 3D scene.
 ///
 /// This is the main interface with the 3d engine.
-pub struct Window {
+pub struct Window<Ui: UiContext = NullUiContext> {
     events: Rc<Receiver<WindowEvent>>,
     unhandled_events: Rc<RefCell<Vec<WindowEvent>>>,
     canvas: Canvas,
@@ -64,10 +77,42 @@ pub struct Window {
     planar_camera: Rc<RefCell<FixedView>>,
     camera: Rc<RefCell<ArcBall>>,
     should_close: bool,
-    ui_context: Option<Rc<RefCell<dyn UiContext>>>,
+    ui_context: Ui,
 }
 
-impl Window {
+impl Window<NullUiContext> {
+    /// Opens a window, hide it then calls a user-defined procedure.
+    ///
+    /// # Arguments
+    /// * `title` - the window title
+    pub fn new_hidden(title: &str) -> Self {
+        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    }
+
+    /// Opens a window then calls a user-defined procedure.
+    ///
+    /// # Arguments
+    /// * `title` - the window title
+    pub fn new(title: &str) -> Self {
+        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    }
+
+    /// Opens a window with a custom size then calls a user-defined procedure.
+    ///
+    /// # Arguments
+    /// * `title` - the window title.
+    /// * `width` - the window width.
+    /// * `height` - the window height.
+    pub fn new_with_size(title: &str, width: u32, height: u32) -> Self {
+        Self::do_new(title, false, width, height, None)
+    }
+
+    pub fn new_with_setup(title: &str, width: u32, height: u32, setup: CanvasSetup) -> Self {
+        Self::do_new(title, false, width, height, Some(setup))
+    }
+}
+
+impl<Ui: UiContext> Window<Ui> {
     /// Indicates whether this window should be closed.
     #[inline]
     pub fn should_close(&self) -> bool {
@@ -403,29 +448,30 @@ impl Window {
         self.light_mode = pos;
     }
 
-    pub fn set_ui(&mut self, ui: Rc<RefCell<impl UiContext>>) {
-        self.ui_context = Some(ui);
+    /// Retrieve a reference to the UI.
+    pub fn ui(&self) -> &Ui {
+        &self.ui_context
     }
 
-    /// Retrieve a reference to the UI.
-    pub fn ui(&self) -> Option<&RefCell<dyn UiContext>> {
-        self.ui_context.as_ref().map(|x| x.as_ref())
+    /// Retrieve a mutable reference to the UI.
+    pub fn ui_mut(&mut self) -> &mut Ui {
+        &mut self.ui_context
     }
 
     /// Opens a window, hide it then calls a user-defined procedure.
     ///
     /// # Arguments
     /// * `title` - the window title
-    pub fn new_hidden(title: &str) -> Window {
-        Window::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    pub fn new_hidden_with_ui(title: &str) -> Self {
+        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
     }
 
     /// Opens a window then calls a user-defined procedure.
     ///
     /// # Arguments
     /// * `title` - the window title
-    pub fn new(title: &str) -> Window {
-        Window::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    pub fn new_with_ui(title: &str) -> Self {
+        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
     }
 
     /// Opens a window with a custom size then calls a user-defined procedure.
@@ -434,12 +480,12 @@ impl Window {
     /// * `title` - the window title.
     /// * `width` - the window width.
     /// * `height` - the window height.
-    pub fn new_with_size(title: &str, width: u32, height: u32) -> Window {
-        Window::do_new(title, false, width, height, None)
+    pub fn new_with_size_and_ui(title: &str, width: u32, height: u32) -> Self {
+        Self::do_new(title, false, width, height, None)
     }
 
-    pub fn new_with_setup(title: &str, width: u32, height: u32, setup: CanvasSetup) -> Window {
-        Window::do_new(title, false, width, height, Some(setup))
+    pub fn new_with_setup_and_ui(title: &str, width: u32, height: u32, setup: CanvasSetup) -> Self {
+        Self::do_new(title, false, width, height, Some(setup))
     }
 
     // FIXME: make this pub?
@@ -449,13 +495,13 @@ impl Window {
         width: u32,
         height: u32,
         setup: Option<CanvasSetup>,
-    ) -> Window {
+    ) -> Self {
         let (event_send, event_receive) = mpsc::channel();
         let canvas = Canvas::open(title, hide, width, height, setup, event_send);
 
         init_gl();
 
-        let mut usr_window = Window {
+        let mut usr_window = Self {
             should_close: false,
             max_dur_per_frame: None,
             canvas: canvas,
@@ -482,7 +528,7 @@ impl Window {
                 Point3::new(0.0f32, 0.0, -1.0),
                 Point3::origin(),
             ))),
-            ui_context: None,
+            ui_context: Ui::new(width as f64, height as f64),
         };
 
         if hide {
@@ -612,12 +658,9 @@ impl Window {
 
         {
             let (size, hidpi) = (self.size(), self.hidpi_factor());
-            if let Some(ui_context) = &mut self.ui_context {
-                let mut ui_context = ui_context.borrow_mut();
-                let is_handled = ui_context.handle_event(event, size, hidpi);
-                if is_handled {
-                    return;
-                }
+            let is_handled = self.ui_context.handle_event(event, size, hidpi);
+            if is_handled {
+                return;
             }
         }
 
@@ -633,17 +676,17 @@ impl Window {
     }
 
     /// Runs the render and event loop until the window is closed.
-    pub fn render_loop<S: State>(mut self, mut state: S) {
+    pub fn render_loop<S: State<Ui>>(mut self, mut state: S) {
         Canvas::render_loop(move |_| self.do_render_with_state(&mut state))
     }
 
     /// Render one frame using the specified state.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "asmjs")))]
-    pub fn render_with_state<S: State>(&mut self, state: &mut S) -> bool {
+    pub fn render_with_state<S: State<Ui>>(&mut self, state: &mut S) -> bool {
         self.do_render_with_state(state)
     }
 
-    fn do_render_with_state<S: State>(&mut self, state: &mut S) -> bool {
+    fn do_render_with_state<S: State<Ui>>(&mut self, state: &mut S) -> bool {
         {
             let (camera, planar_camera, renderer, effect) = state.cameras_and_effect_and_renderer();
             self.should_close = !self.do_render_with(camera, planar_camera, renderer, effect);
@@ -829,10 +872,8 @@ impl Window {
         }
 
         self.text_renderer.render(w as f32, h as f32);
-        if let Some(ui_context) = &mut self.ui_context {
-            let mut ui_context = ui_context.borrow_mut();
-            ui_context.render(w as f32, h as f32, self.canvas.hidpi_factor() as f32);
-        }
+        self.ui_context
+            .render(w as f32, h as f32, self.canvas.hidpi_factor() as f32);
 
         // We are done: swap buffers
         self.canvas.swap_buffers();

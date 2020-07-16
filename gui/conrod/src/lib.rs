@@ -22,14 +22,6 @@ pub struct ConrodContext {
 }
 
 impl ConrodContext {
-    pub fn new(width: f64, height: f64) -> Self {
-        Self {
-            renderer: ConrodRenderer::new(width, height),
-            textures: conrod::image::Map::new(),
-            texture_ids: HashMap::new(),
-        }
-    }
-
     pub fn conrod_ui(&self) -> &conrod::Ui {
         self.renderer.ui()
     }
@@ -61,6 +53,14 @@ impl ConrodContext {
 }
 
 impl UiContext for ConrodContext {
+    fn new(width: f64, height: f64) -> Self {
+        Self {
+            renderer: ConrodRenderer::new(width, height),
+            textures: conrod::image::Map::new(),
+            texture_ids: HashMap::new(),
+        }
+    }
+
     fn handle_event(&mut self, event: &WindowEvent, size: Vector2<u32>, hidpi: f64) -> bool {
         let conrod_ui = self.renderer.ui_mut();
         if let Some(input) = window_event_to_conrod_input(*event, size, hidpi) {

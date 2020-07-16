@@ -2,10 +2,10 @@ use kiss3d::light::Light;
 use kiss3d::window::Window;
 use kiss3d_conrod::conrod;
 use kiss3d_conrod::conrod::widget_ids;
-use std::{cell::RefCell, path::Path, rc::Rc};
+use std::path::Path;
 
 fn main() {
-    let mut window = Window::new("Kiss3d: UI");
+    let mut window: Window<kiss3d_conrod::ConrodContext> = Window::new_with_ui("Kiss3d: UI");
     window.set_background_color(1.0, 1.0, 1.0);
     let mut c = window.add_cube(0.1, 0.1, 0.1);
     c.set_color(1.0, 0.0, 0.0);
@@ -13,22 +13,16 @@ fn main() {
     window.set_light(Light::StickToCamera);
 
     // Generate the widget identifiers.
-    let mut conrod_ctx =
-        kiss3d_conrod::ConrodContext::new(window.width() as f64, window.height() as f64);
-    let ids = Ids::new(conrod_ctx.conrod_ui_mut().widget_id_generator());
-    conrod_ctx.conrod_ui_mut().theme = theme();
+    let ids = Ids::new(window.ui_mut().conrod_ui_mut().widget_id_generator());
+    window.ui_mut().conrod_ui_mut().theme = theme();
     window.add_texture(&Path::new("./examples/media/kitten.png"), "cat");
-    let cat_texture = conrod_ctx.conrod_texture_id("cat").unwrap();
+    let cat_texture = window.ui_mut().conrod_texture_id("cat").unwrap();
 
     let mut app = DemoApp::new(cat_texture);
 
-    let conrod_ctx = Rc::new(RefCell::new(conrod_ctx));
-    window.set_ui(Rc::clone(&conrod_ctx));
-
     // Render loop.
     while window.render() {
-        let mut conrod_ctx = conrod_ctx.borrow_mut();
-        let mut ui = conrod_ctx.conrod_ui_mut().set_widgets();
+        let mut ui = window.ui_mut().conrod_ui_mut().set_widgets();
         gui(&mut ui, &ids, &mut app)
     }
 }
