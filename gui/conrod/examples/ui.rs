@@ -1,27 +1,9 @@
-extern crate kiss3d;
-extern crate nalgebra as na;
-
-#[cfg(feature = "conrod")]
-use kiss3d::conrod;
-#[cfg(feature = "conrod")]
-use kiss3d::conrod::color::Color;
-#[cfg(feature = "conrod")]
-use kiss3d::conrod::position::Positionable;
-#[cfg(feature = "conrod")]
-use kiss3d::conrod::widget_ids;
-#[cfg(feature = "conrod")]
 use kiss3d::light::Light;
-#[cfg(feature = "conrod")]
 use kiss3d::window::Window;
-#[cfg(feature = "conrod")]
-use std::path::Path;
+use kiss3d_conrod::conrod;
+use kiss3d_conrod::conrod::widget_ids;
+use std::{cell::RefCell, path::Path, rc::Rc};
 
-#[cfg(not(feature = "conrod"))]
-fn main() {
-    panic!("The 'conrod' feature must be enabled for this example to work.")
-}
-
-#[cfg(feature = "conrod")]
 fn main() {
     let mut window = Window::new("Kiss3d: UI");
     window.set_background_color(1.0, 1.0, 1.0);
@@ -31,16 +13,22 @@ fn main() {
     window.set_light(Light::StickToCamera);
 
     // Generate the widget identifiers.
-    let ids = Ids::new(window.conrod_ui_mut().widget_id_generator());
-    window.conrod_ui_mut().theme = theme();
+    let mut conrod_ctx =
+        kiss3d_conrod::ConrodContext::new(window.width() as f64, window.height() as f64);
+    let ids = Ids::new(conrod_ctx.conrod_ui_mut().widget_id_generator());
+    conrod_ctx.conrod_ui_mut().theme = theme();
     window.add_texture(&Path::new("./examples/media/kitten.png"), "cat");
-    let cat_texture = window.conrod_texture_id("cat").unwrap();
+    let cat_texture = conrod_ctx.conrod_texture_id("cat").unwrap();
 
     let mut app = DemoApp::new(cat_texture);
 
+    let conrod_ctx = Rc::new(RefCell::new(conrod_ctx));
+    window.set_ui(Rc::clone(&conrod_ctx));
+
     // Render loop.
     while window.render() {
-        let mut ui = window.conrod_ui_mut().set_widgets();
+        let mut conrod_ctx = conrod_ctx.borrow_mut();
+        let mut ui = conrod_ctx.conrod_ui_mut().set_widgets();
         gui(&mut ui, &ids, &mut app)
     }
 }
@@ -51,7 +39,6 @@ fn main() {
  *
  */
 /// A set of reasonable stylistic defaults that works for the `gui` below.
-#[cfg(feature = "conrod")]
 pub fn theme() -> conrod::Theme {
     use conrod::position::{Align, Direction, Padding, Position, Relative};
     conrod::Theme {
@@ -75,7 +62,6 @@ pub fn theme() -> conrod::Theme {
 }
 
 // Generate a unique `WidgetId` for each widget.
-#[cfg(feature = "conrod")]
 widget_ids! {
     pub struct Ids {
         // The scrollable canvas.
@@ -119,7 +105,6 @@ pub const WIN_W: u32 = 600;
 pub const WIN_H: u32 = 420;
 
 /// A demonstration of some application state we want to control with a conrod GUI.
-#[cfg(feature = "conrod")]
 pub struct DemoApp {
     ball_xy: conrod::Point,
     ball_color: conrod::Color,
@@ -127,7 +112,6 @@ pub struct DemoApp {
     cat: conrod::image::Id,
 }
 
-#[cfg(feature = "conrod")]
 impl DemoApp {
     /// Simple constructor for the `DemoApp`.
     pub fn new(cat: conrod::image::Id) -> Self {
@@ -141,7 +125,6 @@ impl DemoApp {
 }
 
 /// Instantiate a GUI demonstrating every widget available in conrod.
-#[cfg(feature = "conrod")]
 pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
     use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
     use std::iter::once;
