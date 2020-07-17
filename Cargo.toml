@@ -67,4 +67,5 @@ ncollide2d = "0.23"
 [workspace]
 members = [
     "gui/conrod",
+    "gui/egui",
 ]

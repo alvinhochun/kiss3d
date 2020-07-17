@@ -1,0 +1,16 @@
+[package]
+name    = "kiss3d_egui"
+version = "0.0.1"
+authors = [ "Alvin Wong <alvinhochun@gmail.com>" ]
+edition = "2018"
+
+license = "BSD-3-Clause"
+
+[dependencies]
+chrono = { version = "0.4" }
+egui = { version = "0.1", path = "D:\\dev\\experiments\\rust-fiddle\\emigui\\egui"}
+kiss3d = { version = "0.24", path = "../.." }
+nalgebra = "0.21"
+
+[dev-dependencies]
+rand = "0.7"
