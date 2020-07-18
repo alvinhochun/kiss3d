@@ -27,10 +27,11 @@ impl Backend {
     ///
     /// [`Backend`]: struct.Backend.html
     pub fn new(settings: Settings) -> Self {
-        let glow_ctx = Context::get().get_glow();
-        let text_pipeline = text::Pipeline::new(&glow_ctx, settings.default_font);
-        let quad_pipeline = quad::Pipeline::new(&glow_ctx);
-        let triangle_pipeline = triangle::Pipeline::new(&glow_ctx);
+        let ctxt = Context::get();
+        let gl = ctxt.get_glow();
+        let text_pipeline = text::Pipeline::new(gl, settings.default_font);
+        let quad_pipeline = quad::Pipeline::new(gl);
+        let triangle_pipeline = triangle::Pipeline::new(gl);
 
         Self {
             quad_pipeline,
@@ -46,8 +47,7 @@ impl Backend {
     /// This is useful for rendering debug information.
     pub fn draw<T: AsRef<str>>(
         &mut self,
-        // gl: &glow::Context,
-        ctxt: &Context,
+        gl: &glow::Context,
         viewport: &Viewport,
         (primitive, mouse_interaction): &(Primitive, mouse::Interaction),
         overlay_text: &[T],
@@ -60,7 +60,7 @@ impl Backend {
         layers.push(Layer::overlay(overlay_text, viewport));
 
         for layer in layers {
-            self.flush(ctxt, scale_factor, projection, &layer, viewport_size.height);
+            self.flush(gl, scale_factor, projection, &layer, viewport_size.height);
         }
 
         *mouse_interaction
@@ -68,8 +68,7 @@ impl Backend {
 
     fn flush(
         &mut self,
-        // gl: &glow::Context,
-        ctxt: &Context,
+        gl: &glow::Context,
         scale_factor: f32,
         transformation: Transformation,
         layer: &Layer<'_>,
@@ -79,10 +78,9 @@ impl Backend {
         // bounds.height = bounds.height.min(target_height);
         bounds.height = target_height.min(bounds.height);
 
-        let glow_ctx = Context::get().get_glow();
         if !layer.quads.is_empty() {
             self.quad_pipeline.draw(
-                &glow_ctx,
+                gl,
                 target_height,
                 &layer.quads,
                 transformation,
@@ -94,13 +92,8 @@ impl Backend {
         if !layer.meshes.is_empty() {
             let scaled = transformation * Transformation::scale(scale_factor, scale_factor);
 
-            self.triangle_pipeline.draw(
-                &glow_ctx,
-                target_height,
-                scaled,
-                scale_factor,
-                &layer.meshes,
-            );
+            self.triangle_pipeline
+                .draw(gl, target_height, scaled, scale_factor, &layer.meshes);
         }
 
         if !layer.text.is_empty() {
@@ -158,7 +151,7 @@ impl Backend {
             }
 
             self.text_pipeline.draw_queued(
-                &glow_ctx,
+                gl,
                 transformation,
                 glow_glyph::Region {
                     x: bounds.x,

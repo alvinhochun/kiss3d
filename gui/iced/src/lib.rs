@@ -1,12 +1,13 @@
+use glow::HasContext;
 use iced_native::{mouse, window, Debug, Event, Program};
 use kiss3d::{context::Context, event::WindowEvent, window::UiContext};
 use nalgebra::Vector2;
 
 mod backend;
+mod program;
 mod quad;
 mod text;
 mod triangle;
-mod program;
 
 pub mod settings;
 pub mod widget;
@@ -138,12 +139,29 @@ where
         );
 
         // Then draw iced on top
+        let ctxt = Context::get();
+        let gl = ctxt.get_glow();
+
+        // Enable auto-conversion from/to sRGB
+        unsafe { gl.enable(glow::FRAMEBUFFER_SRGB) };
+
+        // Enable alpha blending
+        unsafe { gl.enable(glow::BLEND) };
+        unsafe { gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA) };
+
+        // Disable multisampling by default
+        unsafe { gl.disable(glow::MULTISAMPLE) };
+
         let mouse_interaction = self.renderer.backend_mut().draw(
-            &Context::get(),
+            gl,
             &self.viewport,
             state.primitive(),
             &self.debug.overlay(),
         );
+
+        unsafe { gl.enable(glow::MULTISAMPLE) };
+        unsafe { gl.disable(glow::BLEND) };
+        unsafe { gl.disable(glow::FRAMEBUFFER_SRGB) };
 
         // // And update the mouse cursor
         // window.set_cursor_icon(

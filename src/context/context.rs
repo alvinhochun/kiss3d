@@ -142,8 +142,8 @@ impl Context {
         }
     }
 
-    pub fn get_glow(&self) -> std::sync::Arc<glow::Context> {
-        self.glow_ctxt.clone()
+    pub fn get_glow(&self) -> &glow::Context {
+        &self.glow_ctxt
     }
 
     pub fn init_vao(&mut self) {
