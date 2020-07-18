@@ -48,16 +48,16 @@ impl AbstractCanvas for GLCanvas {
             });
         let window = GlWindow::new(window, context, &events).unwrap();
         let _ = unsafe { window.make_current().unwrap() };
+        crate::context::Context::init(|| {
+            glow::Context::from_loader_function(|name| {
+                window.context().get_proc_address(name) as *const _
+            })
+        });
         verify!(gl::load_with(
             |name| window.context().get_proc_address(name) as *const _
         ));
 
-        unsafe {
-            // Setup a single VAO.
-            let mut vao = 0;
-            gl::GenVertexArrays(1, &mut vao);
-            gl::BindVertexArray(vao);
-        }
+        crate::context::Context::with_mut(|ctx| ctx.init_vao());
 
         GLCanvas {
             window,

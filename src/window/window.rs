@@ -37,21 +37,26 @@ static DEFAULT_WIDTH: u32 = 800u32;
 static DEFAULT_HEIGHT: u32 = 600u32;
 
 pub trait UiContext: 'static {
-    fn new(width: f64, height: f64) -> Self;
-    fn handle_event(&mut self, event: &WindowEvent, size: Vector2<u32>, hidpi: f64) -> bool;
-    fn render(&mut self, width: f32, height: f32, hidpi_factor: f32);
+    fn new(width: u32, height: u32) -> Self;
+    fn handle_event(&mut self, event: &WindowEvent, size: Vector2<u32>, hidpi_factor: f64) -> bool;
+    fn render(&mut self, width: u32, height: u32, hidpi_factor: f64);
 }
 
 pub struct NullUiContext;
 
 impl UiContext for NullUiContext {
-    fn new(_width: f64, _height: f64) -> Self {
+    fn new(_width: u32, _height: u32) -> Self {
         Self
     }
-    fn handle_event(&mut self, _event: &WindowEvent, _size: Vector2<u32>, hidpi: f64) -> bool {
+    fn handle_event(
+        &mut self,
+        _event: &WindowEvent,
+        _size: Vector2<u32>,
+        _hidpi_factor: f64,
+    ) -> bool {
         false
     }
-    fn render(&mut self, _width: f32, _height: f32, _hidpi_factor: f32) {}
+    fn render(&mut self, _width: u32, _height: u32, _hidpi_factor: f64) {}
 }
 
 /// Structure representing a window and a 3D scene.
@@ -528,8 +533,9 @@ impl<Ui: UiContext> Window<Ui> {
                 Point3::new(0.0f32, 0.0, -1.0),
                 Point3::origin(),
             ))),
-            ui_context: Ui::new(width as f64, height as f64),
+            ui_context: Ui::new(width, height),
         };
+        Context::get().bind_vao();
 
         if hide {
             usr_window.canvas.hide()
@@ -872,8 +878,8 @@ impl<Ui: UiContext> Window<Ui> {
         }
 
         self.text_renderer.render(w as f32, h as f32);
-        self.ui_context
-            .render(w as f32, h as f32, self.canvas.hidpi_factor() as f32);
+        self.ui_context.render(w, h, self.canvas.hidpi_factor());
+        Context::get().bind_vao();
 
         // We are done: swap buffers
         self.canvas.swap_buffers();
