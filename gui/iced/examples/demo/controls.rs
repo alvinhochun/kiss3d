@@ -8,11 +8,14 @@ use kiss3d_iced::{
 pub struct Controls {
     background_color: Color,
     sliders: [slider::State; 3],
+    test: String,
+    test_state: kiss3d_iced::widget::text_input::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     BackgroundColorChanged(Color),
+    TestEdited(String),
 }
 
 impl Controls {
@@ -20,6 +23,8 @@ impl Controls {
         Controls {
             background_color: Color::BLACK,
             sliders: Default::default(),
+            test: String::new(),
+            test_state: Default::default(),
         }
     }
 
@@ -36,6 +41,9 @@ impl Program for Controls {
         match message {
             Message::BackgroundColorChanged(color) => {
                 self.background_color = color;
+            }
+            Message::TestEdited(s) => {
+                self.test = s;
             }
         }
 
@@ -95,7 +103,13 @@ impl Program for Controls {
                                 Text::new(format!("{:?}", background_color))
                                     .size(14)
                                     .color(Color::WHITE),
-                            ),
+                            )
+                            .push(kiss3d_iced::widget::TextInput::new(
+                                &mut self.test_state,
+                                "TextInput for test",
+                                &self.test,
+                                Message::TestEdited,
+                            )),
                     ),
             )
             .into()
