@@ -26,7 +26,9 @@ impl EguiContext {
 }
 
 impl UiContext for EguiContext {
-    fn new(width: u32, height: u32) -> Self {
+    type Init = ();
+
+    fn new(width: u32, height: u32, _ui_init: Self::Init) -> Self {
         let pixels_per_point = 1.0; // FIXME
         let mut ctx = egui::Context::new();
         let mut raw_input = egui::RawInput {

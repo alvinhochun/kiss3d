@@ -37,7 +37,8 @@ static DEFAULT_WIDTH: u32 = 800u32;
 static DEFAULT_HEIGHT: u32 = 600u32;
 
 pub trait UiContext: 'static {
-    fn new(width: u32, height: u32) -> Self;
+    type Init;
+    fn new(width: u32, height: u32, init: Self::Init) -> Self;
     fn handle_event(&mut self, event: &WindowEvent, size: Vector2<u32>, hidpi_factor: f64) -> bool;
     fn render(&mut self, width: u32, height: u32, hidpi_factor: f64);
 }
@@ -45,7 +46,8 @@ pub trait UiContext: 'static {
 pub struct NullUiContext;
 
 impl UiContext for NullUiContext {
-    fn new(_width: u32, _height: u32) -> Self {
+    type Init = ();
+    fn new(_width: u32, _height: u32, _init: Self::Init) -> Self {
         Self
     }
     fn handle_event(
@@ -91,7 +93,7 @@ impl Window<NullUiContext> {
     /// # Arguments
     /// * `title` - the window title
     pub fn new_hidden(title: &str) -> Self {
-        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None, ())
     }
 
     /// Opens a window then calls a user-defined procedure.
@@ -99,7 +101,7 @@ impl Window<NullUiContext> {
     /// # Arguments
     /// * `title` - the window title
     pub fn new(title: &str) -> Self {
-        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None, ())
     }
 
     /// Opens a window with a custom size then calls a user-defined procedure.
@@ -109,11 +111,11 @@ impl Window<NullUiContext> {
     /// * `width` - the window width.
     /// * `height` - the window height.
     pub fn new_with_size(title: &str, width: u32, height: u32) -> Self {
-        Self::do_new(title, false, width, height, None)
+        Self::do_new(title, false, width, height, None, ())
     }
 
     pub fn new_with_setup(title: &str, width: u32, height: u32, setup: CanvasSetup) -> Self {
-        Self::do_new(title, false, width, height, Some(setup))
+        Self::do_new(title, false, width, height, Some(setup), ())
     }
 }
 
@@ -467,16 +469,16 @@ impl<Ui: UiContext> Window<Ui> {
     ///
     /// # Arguments
     /// * `title` - the window title
-    pub fn new_hidden_with_ui(title: &str) -> Self {
-        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    pub fn new_hidden_with_ui(title: &str, ui_init: Ui::Init) -> Self {
+        Self::do_new(title, true, DEFAULT_WIDTH, DEFAULT_HEIGHT, None, ui_init)
     }
 
     /// Opens a window then calls a user-defined procedure.
     ///
     /// # Arguments
     /// * `title` - the window title
-    pub fn new_with_ui(title: &str) -> Self {
-        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None)
+    pub fn new_with_ui(title: &str, ui_init: Ui::Init) -> Self {
+        Self::do_new(title, false, DEFAULT_WIDTH, DEFAULT_HEIGHT, None, ui_init)
     }
 
     /// Opens a window with a custom size then calls a user-defined procedure.
@@ -485,12 +487,18 @@ impl<Ui: UiContext> Window<Ui> {
     /// * `title` - the window title.
     /// * `width` - the window width.
     /// * `height` - the window height.
-    pub fn new_with_size_and_ui(title: &str, width: u32, height: u32) -> Self {
-        Self::do_new(title, false, width, height, None)
+    pub fn new_with_size_and_ui(title: &str, width: u32, height: u32, ui_init: Ui::Init) -> Self {
+        Self::do_new(title, false, width, height, None, ui_init)
     }
 
-    pub fn new_with_setup_and_ui(title: &str, width: u32, height: u32, setup: CanvasSetup) -> Self {
-        Self::do_new(title, false, width, height, Some(setup))
+    pub fn new_with_setup_and_ui(
+        title: &str,
+        width: u32,
+        height: u32,
+        setup: CanvasSetup,
+        ui_init: Ui::Init,
+    ) -> Self {
+        Self::do_new(title, false, width, height, Some(setup), ui_init)
     }
 
     // FIXME: make this pub?
@@ -500,6 +508,7 @@ impl<Ui: UiContext> Window<Ui> {
         width: u32,
         height: u32,
         setup: Option<CanvasSetup>,
+        ui_init: Ui::Init,
     ) -> Self {
         let (event_send, event_receive) = mpsc::channel();
         let canvas = Canvas::open(title, hide, width, height, setup, event_send);
@@ -533,7 +542,7 @@ impl<Ui: UiContext> Window<Ui> {
                 Point3::new(0.0f32, 0.0, -1.0),
                 Point3::origin(),
             ))),
-            ui_context: Ui::new(width, height),
+            ui_context: Ui::new(width, height, ui_init),
         };
         Context::get().bind_vao();
 

@@ -53,7 +53,9 @@ impl ConrodContext {
 }
 
 impl UiContext for ConrodContext {
-    fn new(width: u32, height: u32) -> Self {
+    type Init = ();
+
+    fn new(width: u32, height: u32, _ui_init: Self::Init) -> Self {
         Self {
             renderer: ConrodRenderer::new(width as f64, height as f64),
             textures: conrod::image::Map::new(),

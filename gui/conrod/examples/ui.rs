@@ -5,7 +5,7 @@ use kiss3d_conrod::conrod::widget_ids;
 use std::path::Path;
 
 fn main() {
-    let mut window: Window<kiss3d_conrod::ConrodContext> = Window::new_with_ui("Kiss3d: UI");
+    let mut window: Window<kiss3d_conrod::ConrodContext> = Window::new_with_ui("Kiss3d: UI", ());
     window.set_background_color(1.0, 1.0, 1.0);
     let mut c = window.add_cube(0.1, 0.1, 0.1);
     c.set_color(1.0, 0.0, 0.0);

@@ -25,7 +25,7 @@ where
     P: Program<Renderer = Renderer> + 'static,
 {
     // pending_program: Option<P>,
-    state: Option<iced_native::program::State<P>>,
+    state: iced_native::program::State<P>,
     debug: Debug,
     renderer: Renderer,
     viewport: Viewport,
@@ -37,19 +37,8 @@ impl<P> IcedContext<P>
 where
     P: Program<Renderer = Renderer> + 'static,
 {
-    pub fn set_program(&mut self, program: P) {
-        // self.pending_program = Some(program);
-        self.state = Some(iced_native::program::State::new(
-            program,
-            self.viewport.logical_size(),
-            Point::new(self.cursor_position.0 as f32, self.cursor_position.1 as f32),
-            &mut self.renderer,
-            &mut self.debug,
-        ))
-    }
-
-    pub fn program(&self) -> Option<&P> {
-        self.state.as_ref().map(|s| s.program())
+    pub fn program(&self) -> &P {
+        self.state.program()
     }
 }
 
@@ -57,13 +46,25 @@ impl<P> UiContext for IcedContext<P>
 where
     P: Program<Renderer = Renderer> + 'static,
 {
-    fn new(width: u32, height: u32) -> Self {
+    type Init = P;
+
+    fn new(width: u32, height: u32, ui_init: Self::Init) -> Self {
+        let mut debug = Debug::new();
+        let mut renderer = Renderer::new(Backend::new(Settings::default()));
+        let viewport = Viewport::with_physical_size(Size::new(width, height), 1.0);
+        let state = iced_native::program::State::new(
+            ui_init,
+            viewport.logical_size(),
+            Point::new(-1.0, -1.0),
+            &mut renderer,
+            &mut debug,
+        );
         Self {
             // pending_program: None,
-            state: None,
-            debug: Debug::new(),
-            renderer: Renderer::new(Backend::new(Settings::default())),
-            viewport: Viewport::with_physical_size(Size::new(width, height), 1.0),
+            state,
+            debug,
+            renderer,
+            viewport,
             cursor_position: (0.0, 0.0),
         }
     }
@@ -99,12 +100,8 @@ where
             _ => {}
         }
 
-        let state = match &mut self.state {
-            Some(x) => x,
-            None => return false,
-        };
         if let Some(event) = window_event_to_iced_event(*event, size, hidpi_factor) {
-            state.queue_event(event);
+            self.state.queue_event(event);
         }
         // TODO
         // todo!()
@@ -122,13 +119,9 @@ where
         {
             self.viewport = Viewport::with_physical_size(Size::new(width, height), hidpi_factor)
         }
-        let state = match &mut self.state {
-            Some(x) => x,
-            None => return,
-        };
 
         // We update iced
-        let _ = state.update(
+        let _ = self.state.update(
             self.viewport.logical_size(),
             Point::new(self.cursor_position.0 as f32, self.cursor_position.1 as f32),
             None,
@@ -153,7 +146,7 @@ where
         let mouse_interaction = self.renderer.backend_mut().draw(
             gl,
             &self.viewport,
-            state.primitive(),
+            self.state.primitive(),
             &self.debug.overlay(),
         );
 
