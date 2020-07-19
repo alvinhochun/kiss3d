@@ -53,9 +53,9 @@ impl ConrodContext {
 }
 
 impl UiContext for ConrodContext {
-    fn new(width: f64, height: f64) -> Self {
+    fn new(width: u32, height: u32) -> Self {
         Self {
-            renderer: ConrodRenderer::new(width, height),
+            renderer: ConrodRenderer::new(width as f64, height as f64),
             textures: conrod::image::Map::new(),
             texture_ids: HashMap::new(),
         }
@@ -87,9 +87,13 @@ impl UiContext for ConrodContext {
         false
     }
 
-    fn render(&mut self, width: f32, height: f32, hidpi_factor: f32) {
-        self.renderer
-            .render(width, height, hidpi_factor, &self.textures)
+    fn render(&mut self, width: u32, height: u32, hidpi_factor: f64) {
+        self.renderer.render(
+            width as f32,
+            height as f32,
+            hidpi_factor as f32,
+            &self.textures,
+        )
     }
 }
 

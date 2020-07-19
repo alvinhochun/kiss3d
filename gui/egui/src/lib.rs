@@ -26,7 +26,7 @@ impl EguiContext {
 }
 
 impl UiContext for EguiContext {
-    fn new(width: f64, height: f64) -> Self {
+    fn new(width: u32, height: u32) -> Self {
         let pixels_per_point = 1.0; // FIXME
         let mut ctx = egui::Context::new();
         let mut raw_input = egui::RawInput {
@@ -51,12 +51,16 @@ impl UiContext for EguiContext {
         window_event_to_egui_input(*event, size, hidpi, &mut self.raw_input)
     }
 
-    fn render(&mut self, width: f32, height: f32, hidpi_factor: f32) {
-        self.raw_input.screen_size = egui::vec2(width, height);
+    fn render(&mut self, width: u32, height: u32, hidpi_factor: f64) {
+        self.raw_input.screen_size = egui::vec2(width as f32, height as f32);
         // let (output, paint_batches) = self.ctx.end_frame();
         if let Some((output, paint_batches)) = self.ui_frame_output.take() {
-            self.painter
-                .paint_batches(width, height, paint_batches, self.ctx.texture());
+            self.painter.paint_batches(
+                width as f32,
+                height as f32,
+                paint_batches,
+                self.ctx.texture(),
+            );
         }
 
         // FIXME: ???
